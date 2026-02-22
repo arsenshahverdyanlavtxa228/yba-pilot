@@ -404,16 +404,16 @@ if game.PlaceId == TARGET_PLACE then
                 orbit.yaw   = orbit.yaw   - inp.Delta.X * orbit.sens
                 orbit.pitch = math.clamp(orbit.pitch - inp.Delta.Y * orbit.sens, orbit.pitchMin, orbit.pitchMax)
             elseif inp.UserInputType == Enum.UserInputType.MouseWheel then
-                orbit.radius = math.clamp(orbit.radius - inp.Position.Z * 2, orbit.minR, orbit.maxR)
+                -- Отдаление и приближение на ПК (колёсико мыши)
+                orbit.radius = math.clamp(orbit.radius - inp.Position.Z * 5, orbit.minR, orbit.maxR)
             end
         end)
 
         orbit.c4 = UserInputService.TouchPan:Connect(function(touchPositions, totalTranslation, velocity, state, processed)
             if processed then return end
-            -- TouchPan velocity is usually in pixels per second. 
-            -- We just take a fraction of velocity to rotate the camera.
-            orbit.yaw   = orbit.yaw   - velocity.X * 0.005 * 0.5
-            orbit.pitch = math.clamp(orbit.pitch - velocity.Y * 0.005 * 0.5, orbit.pitchMin, orbit.pitchMax)
+            -- Значительно уменьшена чувствительность на мобайле (было 0.0025, стало 0.0005)
+            orbit.yaw   = orbit.yaw   - velocity.X * 0.0005
+            orbit.pitch = math.clamp(orbit.pitch - velocity.Y * 0.0005, orbit.pitchMin, orbit.pitchMax)
         end)
 
         local lastPinchScale = 1
@@ -423,8 +423,8 @@ if game.PlaceId == TARGET_PLACE then
                 lastPinchScale = scale
             end
             local deltaScale = scale - lastPinchScale
-            -- Pinch in (scale < 1) zooms out, pinch out (scale > 1) zooms in
-            orbit.radius = math.clamp(orbit.radius - deltaScale * 15, orbit.minR, orbit.maxR)
+            -- Зум на мобайле (щипок)
+            orbit.radius = math.clamp(orbit.radius - deltaScale * 30, orbit.minR, orbit.maxR)
             lastPinchScale = scale
         end)
 
@@ -436,6 +436,14 @@ if game.PlaceId == TARGET_PLACE then
                 local delta = UserInputService:GetMouseDelta()
                 orbit.yaw = orbit.yaw - delta.X * orbit.sens
                 orbit.pitch = math.clamp(orbit.pitch - delta.Y * orbit.sens, orbit.pitchMin, orbit.pitchMax)
+            end
+
+            -- Дополнительно зум на ПК через кнопки I и O
+            if UserInputService:IsKeyDown(Enum.KeyCode.I) then
+                orbit.radius = math.clamp(orbit.radius - 0.5, orbit.minR, orbit.maxR)
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.O) then
+                orbit.radius = math.clamp(orbit.radius + 0.5, orbit.minR, orbit.maxR)
             end
 
             local s = getStand()

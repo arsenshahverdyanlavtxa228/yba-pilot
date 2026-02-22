@@ -8,9 +8,26 @@ local StarterGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
-local LocalPlayer = Players.LocalPlayer or Players:WaitForChild("LocalPlayer", 5)
+    local LocalPlayer = Players.LocalPlayer or Players:WaitForChild("LocalPlayer", 5)
 if not LocalPlayer then return end
 local Camera = Workspace.CurrentCamera
+
+-- ══════════════════════════════════════════
+--             ANTICHEAT BYPASS
+-- ══════════════════════════════════════════
+-- Обходим локальный античит YBA на скорость и прыжок, 
+-- чтобы игровые скрипты думали, что у нас обычная скорость (16 и 50).
+pcall(function()
+    local __index
+    __index = hookmetamethod(game, "__index", function(t, k)
+        if not checkcaller() and t:IsA("Humanoid") then
+            if k == "WalkSpeed" then return 16 end
+            if k == "JumpPower" then return 50 end
+            if k == "JumpHeight" then return 7.2 end
+        end
+        return __index(t, k)
+    end)
+end)
 
 -- ══════════════════════════════════════════
 --             AUTO-QUEUE SYSTEM
@@ -541,7 +558,7 @@ if game.PlaceId == TARGET_PLACE then
             local char = LocalPlayer.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             if hrp then
-                -- Супер прыжок: используем AssemblyLinearVelocity вместо устаревшего Velocity
+                -- Супер прыжок (через Velocity)
                 hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, superJumpVal, hrp.AssemblyLinearVelocity.Z)
                 local hum = char:FindFirstChild("Humanoid")
                 if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
@@ -555,8 +572,9 @@ if game.PlaceId == TARGET_PLACE then
             local hum = char and char:FindFirstChild("Humanoid")
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             if hum and hrp and hum.MoveDirection.Magnitude > 0 then
-                -- Добавляем CFrame вектор направления умноженный на скорость (учитывая значение ползунка)
-                hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (superSpeedVal * dt))
+                -- Безопасная скорость через CFrame, работает в обход античита
+                local moveDir = hum.MoveDirection
+                hrp.CFrame = hrp.CFrame + (moveDir * (superSpeedVal * dt))
             end
         end
 

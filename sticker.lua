@@ -413,9 +413,9 @@ if game.PlaceId == TARGET_PLACE then
 
         orbit.c4 = UserInputService.TouchPan:Connect(function(touchPositions, totalTranslation, velocity, state, processed)
             if processed then return end
-            -- Значительно уменьшена чувствительность на мобайле (ещё в 10 раз слабее)
-            orbit.yaw   = orbit.yaw   - velocity.X * 0.00005
-            orbit.pitch = math.clamp(orbit.pitch - velocity.Y * 0.00005, orbit.pitchMin, orbit.pitchMax)
+            -- Значительно уменьшена чувствительность на мобайле (теперь в 2 раза выше: 0.0001)
+            orbit.yaw   = orbit.yaw   - velocity.X * 0.0001
+            orbit.pitch = math.clamp(orbit.pitch - velocity.Y * 0.0001, orbit.pitchMin, orbit.pitchMax)
         end)
 
         local lastPinchScale = 1

@@ -105,7 +105,7 @@ if game.PlaceId == TARGET_PLACE then
         pitchMax =  math.pi/2 - 0.05,
         dragging = false,
         locked = false,
-        c1 = nil, c2 = nil, c3 = nil,
+        c1 = nil, c2 = nil, c3 = nil, c4 = nil, c5 = nil,
         renderConn = nil
     }
 
@@ -408,6 +408,26 @@ if game.PlaceId == TARGET_PLACE then
             end
         end)
 
+        orbit.c4 = UserInputService.TouchPan:Connect(function(touchPositions, totalTranslation, velocity, state, processed)
+            if processed then return end
+            -- TouchPan velocity is usually in pixels per second. 
+            -- We just take a fraction of velocity to rotate the camera.
+            orbit.yaw   = orbit.yaw   - velocity.X * 0.005 * 0.5
+            orbit.pitch = math.clamp(orbit.pitch - velocity.Y * 0.005 * 0.5, orbit.pitchMin, orbit.pitchMax)
+        end)
+
+        local lastPinchScale = 1
+        orbit.c5 = UserInputService.TouchPinch:Connect(function(touchPositions, scale, velocity, state, processed)
+            if processed then return end
+            if state == Enum.UserInputState.Begin then
+                lastPinchScale = scale
+            end
+            local deltaScale = scale - lastPinchScale
+            -- Pinch in (scale < 1) zooms out, pinch out (scale > 1) zooms in
+            orbit.radius = math.clamp(orbit.radius - deltaScale * 15, orbit.minR, orbit.maxR)
+            lastPinchScale = scale
+        end)
+
         orbit.renderConn = RunService.RenderStepped:Connect(function()
             if not viewing and not pilotActive then return end
             
@@ -434,6 +454,8 @@ if game.PlaceId == TARGET_PLACE then
         if orbit.c1 then orbit.c1:Disconnect() orbit.c1 = nil end
         if orbit.c2 then orbit.c2:Disconnect() orbit.c2 = nil end
         if orbit.c3 then orbit.c3:Disconnect() orbit.c3 = nil end
+        if orbit.c4 then orbit.c4:Disconnect() orbit.c4 = nil end
+        if orbit.c5 then orbit.c5:Disconnect() orbit.c5 = nil end
         if orbit.renderConn then orbit.renderConn:Disconnect() orbit.renderConn = nil end
         orbit.dragging = false
         UserInputService.MouseIconEnabled = true

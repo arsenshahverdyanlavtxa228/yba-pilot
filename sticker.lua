@@ -90,7 +90,7 @@ if game.PlaceId == TARGET_PLACE then
     local originalCollides = {}
 
     local viewing = false
-    local viewingStand = nil
+    local UI_UpdateViewButton = nil
     local prevCamSubject = nil
     local prevCamType = nil
 
@@ -542,8 +542,10 @@ if game.PlaceId == TARGET_PLACE then
             scanTimer = 0
         end
         if viewing and not pilotActive then
-            if not viewingStand or not viewingStand.Parent or not viewingStand:FindFirstChild("HumanoidRootPart") then
+            local s = getStand()
+            if not s or not s:FindFirstChild("HumanoidRootPart") then
                 stopOrbitCamera()
+                if UI_UpdateViewButton then UI_UpdateViewButton() end
             end
         end
         if not stickerEnabled or pilotActive then return end
@@ -574,7 +576,7 @@ if game.PlaceId == TARGET_PLACE then
         if stickerMethod == "up" then
             if currentTargetForEntity[myChar] ~= targetHRP then
                 pcall(createAlignsFor, myChar, targetHRP, "up")
-            end
+            ends
         else
             cleanupAlignFor(myChar)
             disableNoclipMode(false)
@@ -938,6 +940,13 @@ if game.PlaceId == TARGET_PLACE then
         if stickerEnabled then for entity, _ in pairs(activeAligns) do cleanupAlignFor(entity) end end
         if stickerMethod ~= "up" then disableNoclipMode(false) end
     end)
+
+    UI_UpdateViewButton = function()
+        if btnView then
+            btnView.Text = "📷 View Stand [OFF]"
+            btnView.BackgroundColor3 = Color3.fromRGB(40, 60, 40)
+        end
+    end
 
     btnView.MouseButton1Click:Connect(function()
         if pilotActive then notify("YBA", "Камера уже управляется Пилотом!") return end

@@ -105,7 +105,9 @@ if game.PlaceId == TARGET_PLACE then
         pitchMax =  math.pi/2 - 0.05,
         dragging = false,
         locked = false,
-        c1 = nil, c2 = nil, c3 = nil, c4 = nil, c5 = nil,
+        zoomIn = false,
+        zoomOut = false,
+        c1 = nil, c2 = nil, c3 = nil, c4 = nil, c5 = nil, c6 = nil, c7 = nil,
         renderConn = nil
     }
 
@@ -428,6 +430,26 @@ if game.PlaceId == TARGET_PLACE then
             lastPinchScale = scale
         end)
 
+        -- Нажатие клавиш (работает при любой раскладке)
+        orbit.c6 = UserInputService.InputBegan:Connect(function(inp, proc)
+            if proc then return end
+            -- Приближение (I, W, Скролл вверх)
+            if inp.KeyCode == Enum.KeyCode.I or inp.KeyCode == Enum.KeyCode.Equals or inp.KeyCode == Enum.KeyCode.PageUp then
+                orbit.zoomIn = true
+            -- Отдаление (O, S, Скролл вниз)
+            elseif inp.KeyCode == Enum.KeyCode.O or inp.KeyCode == Enum.KeyCode.Minus or inp.KeyCode == Enum.KeyCode.PageDown then
+                orbit.zoomOut = true
+            end
+        end)
+
+        orbit.c7 = UserInputService.InputEnded:Connect(function(inp, proc)
+            if inp.KeyCode == Enum.KeyCode.I or inp.KeyCode == Enum.KeyCode.Equals or inp.KeyCode == Enum.KeyCode.PageUp then
+                orbit.zoomIn = false
+            elseif inp.KeyCode == Enum.KeyCode.O or inp.KeyCode == Enum.KeyCode.Minus or inp.KeyCode == Enum.KeyCode.PageDown then
+                orbit.zoomOut = false
+            end
+        end)
+
         orbit.renderConn = RunService.RenderStepped:Connect(function()
             if not viewing and not pilotActive then return end
             
@@ -438,12 +460,12 @@ if game.PlaceId == TARGET_PLACE then
                 orbit.pitch = math.clamp(orbit.pitch - delta.Y * orbit.sens, orbit.pitchMin, orbit.pitchMax)
             end
 
-            -- Дополнительно зум на ПК через кнопки I и O
-            if UserInputService:IsKeyDown(Enum.KeyCode.I) then
-                orbit.radius = math.clamp(orbit.radius - 0.5, orbit.minR, orbit.maxR)
+            -- Плавный зум кнопками
+            if orbit.zoomIn then
+                orbit.radius = math.clamp(orbit.radius - 0.8, orbit.minR, orbit.maxR)
             end
-            if UserInputService:IsKeyDown(Enum.KeyCode.O) then
-                orbit.radius = math.clamp(orbit.radius + 0.5, orbit.minR, orbit.maxR)
+            if orbit.zoomOut then
+                orbit.radius = math.clamp(orbit.radius + 0.8, orbit.minR, orbit.maxR)
             end
 
             local s = getStand()
@@ -464,8 +486,12 @@ if game.PlaceId == TARGET_PLACE then
         if orbit.c3 then orbit.c3:Disconnect() orbit.c3 = nil end
         if orbit.c4 then orbit.c4:Disconnect() orbit.c4 = nil end
         if orbit.c5 then orbit.c5:Disconnect() orbit.c5 = nil end
+        if orbit.c6 then orbit.c6:Disconnect() orbit.c6 = nil end
+        if orbit.c7 then orbit.c7:Disconnect() orbit.c7 = nil end
         if orbit.renderConn then orbit.renderConn:Disconnect() orbit.renderConn = nil end
         orbit.dragging = false
+        orbit.zoomIn = false
+        orbit.zoomOut = false
         UserInputService.MouseIconEnabled = true
         viewing = false
         pcall(function()

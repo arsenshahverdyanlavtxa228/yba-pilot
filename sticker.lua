@@ -576,7 +576,7 @@ if game.PlaceId == TARGET_PLACE then
         if stickerMethod == "up" then
             if currentTargetForEntity[myChar] ~= targetHRP then
                 pcall(createAlignsFor, myChar, targetHRP, "up")
-            ends
+            end
         else
             cleanupAlignFor(myChar)
             disableNoclipMode(false)

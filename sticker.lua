@@ -535,13 +535,16 @@ if game.PlaceId == TARGET_PLACE then
     end
 
     -- // STICKER & MOVEMENT MODE //
-    UserInputService.JumpRequest:Connect(function()
-        if superJumpEnabled then
+    UserInputService.InputBegan:Connect(function(input, processed)
+        if processed then return end
+        if input.KeyCode == Enum.KeyCode.Space and superJumpEnabled then
             local char = LocalPlayer.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             if hrp then
-                -- Супер прыжок (работает и на полу, и в полёте)
-                hrp.Velocity = Vector3.new(hrp.Velocity.X, 120, hrp.Velocity.Z)
+                -- Супер прыжок: используем AssemblyLinearVelocity вместо устаревшего Velocity
+                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, superJumpVal, hrp.AssemblyLinearVelocity.Z)
+                local hum = char:FindFirstChild("Humanoid")
+                if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
             end
         end
     end)
@@ -552,8 +555,8 @@ if game.PlaceId == TARGET_PLACE then
             local hum = char and char:FindFirstChild("Humanoid")
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             if hum and hrp and hum.MoveDirection.Magnitude > 0 then
-                -- Добавляем CFrame вектор направления умноженный на скорость
-                hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (80 * dt))
+                -- Добавляем CFrame вектор направления умноженный на скорость (учитывая значение ползунка)
+                hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (superSpeedVal * dt))
             end
         end
 
@@ -663,8 +666,8 @@ if game.PlaceId == TARGET_PLACE then
     sg.Parent = game.CoreGui
 
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 460, 0, 250)
-    mainFrame.Position = UDim2.new(0.5, -230, 0.5, -125)
+    mainFrame.Size = UDim2.new(0, 460, 0, 480)
+    mainFrame.Position = UDim2.new(0.5, -230, 0.5, -240)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     mainFrame.BorderSizePixel = 0
     mainFrame.Active = true
@@ -751,6 +754,128 @@ if game.PlaceId == TARGET_PLACE then
         return b
     end
 
+    local function CreateSlider(parent, text, min, max, default, callback)
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(1, -20, 0, 45)
+        frame.BackgroundTransparency = 1
+        frame.Parent = parent
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 0, 20)
+        label.BackgroundTransparency = 1
+        label.Text = text .. ": " .. tostring(default)
+        label.Font = Enum.Font.GothamBold
+        label.TextSize = 13
+        label.TextColor3 = Color3.fromRGB(220, 220, 255)
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = frame
+
+        local bg = Instance.new("Frame")
+        bg.Size = UDim2.new(1, 0, 0, 10)
+        bg.Position = UDim2.new(0, 0, 0, 25)
+        bg.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+        bg.Parent = frame
+        Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
+
+        local fill = Instance.new("Frame")
+        fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+        fill.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
+        fill.Parent = bg
+        Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, 0, 1, 0)
+        btn.BackgroundTransparency = 1
+        btn.Text = ""
+        btn.Parent = bg
+
+        local dragging = false
+        local function update(input)
+            local pos = math.clamp((input.Position.X - bg.AbsolutePosition.X) / bg.AbsoluteSize.X, 0, 1)
+            fill.Size = UDim2.new(pos, 0, 1, 0)
+            local val = math.floor(min + (max - min) * pos)
+            label.Text = text .. ": " .. tostring(val)
+            callback(val)
+        end
+
+        btn.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+                update(input)
+            end
+        end)
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                update(input)
+            end
+        end)
+        return frame
+    end
+
+    local function CreateSlider(parent, text, min, max, default, callback)
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(1, -20, 0, 45)
+        frame.BackgroundTransparency = 1
+        frame.Parent = parent
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 0, 20)
+        label.BackgroundTransparency = 1
+        label.Text = text .. ": " .. tostring(default)
+        label.Font = Enum.Font.GothamBold
+        label.TextSize = 13
+        label.TextColor3 = Color3.fromRGB(220, 220, 255)
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = frame
+
+        local bg = Instance.new("Frame")
+        bg.Size = UDim2.new(1, 0, 0, 10)
+        bg.Position = UDim2.new(0, 0, 0, 25)
+        bg.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+        bg.Parent = frame
+        Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
+
+        local fill = Instance.new("Frame")
+        fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+        fill.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
+        fill.Parent = bg
+        Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, 0, 1, 0)
+        btn.BackgroundTransparency = 1
+        btn.Text = ""
+        btn.Parent = bg
+
+        local dragging = false
+        local function update(input)
+            local pos = math.clamp((input.Position.X - bg.AbsolutePosition.X) / bg.AbsoluteSize.X, 0, 1)
+            fill.Size = UDim2.new(pos, 0, 1, 0)
+            local val = math.floor(min + (max - min) * pos)
+            label.Text = text .. ": " .. tostring(val)
+            callback(val)
+        end
+
+        btn.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+                update(input)
+            end
+        end)
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                update(input)
+            end
+        end)
+        return frame
+    end
+
     -- Row 1: Pilot & View
     local row1 = CreateRow()
     local btnPilot = CreateButton(row1, "✈ Pilot Mode [OFF]", Color3.fromRGB(40, 40, 60), 0.5)
@@ -784,6 +909,16 @@ if game.PlaceId == TARGET_PLACE then
     local row4 = CreateRow()
     local btnSpeed = CreateButton(row4, "⚡ Super Speed [OFF]", Color3.fromRGB(60, 60, 40), 0.5)
     local btnJump  = CreateButton(row4, "🚀 Super Jump [OFF]", Color3.fromRGB(60, 40, 60), 0.5)
+
+    local superSpeedVal = 80
+    local superJumpVal  = 120
+
+    local sliderSpeed = CreateSlider(mainFrame, "⚡ Speed Power", 20, 300, 80, function(val)
+        superSpeedVal = val
+    end)
+    local sliderJump = CreateSlider(mainFrame, "🚀 Jump Power", 50, 500, 120, function(val)
+        superJumpVal = val
+    end)
 
     local info = Instance.new("TextLabel")
     info.Size = UDim2.new(1, -20, 0, 20)

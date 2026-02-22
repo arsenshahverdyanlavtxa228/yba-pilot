@@ -691,7 +691,41 @@ if game.PlaceId == TARGET_PLACE then
     closeBtn.TextSize = 14
     closeBtn.TextColor3 = Color3.fromRGB(200, 100, 100)
     closeBtn.Parent = titleBar
-    closeBtn.MouseButton1Click:Connect(function() sg.Enabled = not sg.Enabled end)
+
+    -- // Круглая кнопка для открытия (ST) //
+    local openBtn = Instance.new("TextButton")
+    openBtn.Size = UDim2.new(0, 50, 0, 50)
+    openBtn.Position = UDim2.new(0, 20, 0, 80) -- слева сверху
+    openBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    openBtn.Text = "ST"
+    openBtn.Font = Enum.Font.GothamBold
+    openBtn.TextSize = 18
+    openBtn.TextColor3 = Color3.fromRGB(220, 220, 255)
+    openBtn.Visible = false
+    openBtn.Active = true
+    openBtn.Draggable = true
+    openBtn.Parent = sg
+    Instance.new("UICorner", openBtn).CornerRadius = UDim.new(1, 0)
+    local openStroke = Instance.new("UIStroke")
+    openStroke.Color = Color3.fromRGB(60, 60, 100)
+    openStroke.Thickness = 2
+    openStroke.Parent = openBtn
+
+    local function toggleMenu()
+        mainFrame.Visible = not mainFrame.Visible
+        openBtn.Visible = not mainFrame.Visible
+    end
+
+    closeBtn.MouseButton1Click:Connect(toggleMenu)
+    openBtn.MouseButton1Click:Connect(toggleMenu)
+
+    -- Хоткей 'K' для скрытия/показа меню (ПК)
+    UserInputService.InputBegan:Connect(function(input, processed)
+        if processed then return end
+        if input.KeyCode == Enum.KeyCode.K then
+            toggleMenu()
+        end
+    end)
 
     local layout = Instance.new("UIListLayout")
     layout.SortOrder = Enum.SortOrder.LayoutOrder

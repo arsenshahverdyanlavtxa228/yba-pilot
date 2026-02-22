@@ -100,7 +100,7 @@ if game.PlaceId == TARGET_PLACE then
     local orbit = {
         yaw = 0, pitch = math.rad(20),
         radius = 12, minR = 3, maxR = 60,
-        sens = 0.004,
+        sens = 0.004, sensMobile = 0.0001,
         pitchMin = -math.pi/2 + 0.05,
         pitchMax =  math.pi/2 - 0.05,
         dragging = false,
@@ -413,9 +413,9 @@ if game.PlaceId == TARGET_PLACE then
 
         orbit.c4 = UserInputService.TouchPan:Connect(function(touchPositions, totalTranslation, velocity, state, processed)
             if processed then return end
-            -- Значительно уменьшена чувствительность на мобайле (теперь в 2 раза выше: 0.0001)
-            orbit.yaw   = orbit.yaw   - velocity.X * 0.0001
-            orbit.pitch = math.clamp(orbit.pitch - velocity.Y * 0.0001, orbit.pitchMin, orbit.pitchMax)
+            -- Чувствительность берётся из значения слайдера (orbit.sensMobile)
+            orbit.yaw   = orbit.yaw   - velocity.X * orbit.sensMobile
+            orbit.pitch = math.clamp(orbit.pitch - velocity.Y * orbit.sensMobile, orbit.pitchMin, orbit.pitchMax)
         end)
 
         local lastPinchScale = 1
@@ -700,8 +700,8 @@ if game.PlaceId == TARGET_PLACE then
     sg.Parent = game.CoreGui
 
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 460, 0, 250)
-    mainFrame.Position = UDim2.new(0.5, -230, 0.5, -125)
+    mainFrame.Size = UDim2.new(0, 460, 0, 300)
+    mainFrame.Position = UDim2.new(0.5, -230, 0.5, -150)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     mainFrame.BorderSizePixel = 0
     mainFrame.Active = true
@@ -972,6 +972,10 @@ if game.PlaceId == TARGET_PLACE then
     local row3 = CreateRow()
     local btnSticker = CreateButton(row3, "📌 Sticker [OFF]", Color3.fromRGB(40, 40, 60), 0.5)
     local btnMethod  = CreateButton(row3, "⚙ Method: NORMAL", Color3.fromRGB(60, 40, 60), 0.5)
+
+    local sliderMobileSens = CreateSlider(mainFrame, "📱 Mobile Sens", 1, 100, 10, function(val)
+        orbit.sensMobile = val / 100000
+    end)
 
     local info = Instance.new("TextLabel")
     info.Size = UDim2.new(1, -20, 0, 20)

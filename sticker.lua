@@ -82,6 +82,9 @@ if game.PlaceId == TARGET_PLACE then
     local activeAligns = {}
     local currentTargetForEntity = {}
 
+    local superSpeedEnabled = false
+    local superJumpEnabled  = false
+
     local noclipConn = nil
     local noclipEnabled = false
     local originalCollides = {}
@@ -531,8 +534,29 @@ if game.PlaceId == TARGET_PLACE then
         end
     end
 
-    -- // STICKER MODE //
+    -- // STICKER & MOVEMENT MODE //
+    UserInputService.JumpRequest:Connect(function()
+        if superJumpEnabled then
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                -- Супер прыжок (работает и на полу, и в полёте)
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, 120, hrp.Velocity.Z)
+            end
+        end
+    end)
+
     RunService.Heartbeat:Connect(function(dt)
+        if superSpeedEnabled then
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChild("Humanoid")
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hum and hrp and hum.MoveDirection.Magnitude > 0 then
+                -- Добавляем CFrame вектор направления умноженный на скорость
+                hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (80 * dt))
+            end
+        end
+
         scanTimer = scanTimer + dt
         if scanTimer >= CHECK_SCAN_INTERVAL then
             rebuildModelCache()
@@ -639,8 +663,8 @@ if game.PlaceId == TARGET_PLACE then
     sg.Parent = game.CoreGui
 
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 320, 0, 310)
-    mainFrame.Position = UDim2.new(0.5, -160, 0.5, -155)
+    mainFrame.Size = UDim2.new(0, 460, 0, 250)
+    mainFrame.Position = UDim2.new(0.5, -230, 0.5, -125)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     mainFrame.BorderSizePixel = 0
     mainFrame.Active = true
@@ -695,34 +719,54 @@ if game.PlaceId == TARGET_PLACE then
     layout.Parent = mainFrame
     Instance.new("UIPadding", mainFrame).PaddingTop = UDim.new(0, 45)
 
-    local function CreateButton(text, color)
+    local function CreateRow()
+        local r = Instance.new("Frame")
+        r.Size = UDim2.new(1, -20, 0, 35)
+        r.BackgroundTransparency = 1
+        r.Parent = mainFrame
+        local l = Instance.new("UIListLayout")
+        l.FillDirection = Enum.FillDirection.Horizontal
+        l.SortOrder = Enum.SortOrder.LayoutOrder
+        l.Padding = UDim.new(0, 10)
+        l.Parent = r
+        return r
+    end
+
+    local function CreateButton(parent, text, color, widthScale)
         local b = Instance.new("TextButton")
-        b.Size = UDim2.new(1, -30, 0, 35)
+        b.Size = UDim2.new(widthScale, widthScale == 1 and 0 or -5, 1, 0)
         b.BackgroundColor3 = color
         b.Text = text
         b.Font = Enum.Font.GothamBold
         b.TextSize = 14
         b.TextColor3 = Color3.fromRGB(255, 255, 255)
-        b.Parent = mainFrame
+        b.Parent = parent
         Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
         
         b.MouseEnter:Connect(function() createTween(b, {0.2, Enum.EasingStyle.Quad}, {BackgroundColor3 = Color3.new(color.R*1.2, color.G*1.2, color.B*1.2)}) end)
         b.MouseLeave:Connect(function() createTween(b, {0.2, Enum.EasingStyle.Quad}, {BackgroundColor3 = color}) end)
-        b.MouseButton1Down:Connect(function() createTween(b, {0.1, Enum.EasingStyle.Quad}, {Size = UDim2.new(1, -36, 0, 33)}) end)
-        b.MouseButton1Up:Connect(function() createTween(b, {0.1, Enum.EasingStyle.Quad}, {Size = UDim2.new(1, -30, 0, 35)}) end)
+        -- Анимация нажатия
+        b.MouseButton1Down:Connect(function() createTween(b, {0.1, Enum.EasingStyle.Quad}, {TextSize = 12}) end)
+        b.MouseButton1Up:Connect(function() createTween(b, {0.1, Enum.EasingStyle.Quad}, {TextSize = 14}) end)
         return b
     end
 
-    local btnPilot = CreateButton("✈ Pilot Mode [OFF]", Color3.fromRGB(40, 40, 60))
+    -- Row 1: Pilot & View
+    local row1 = CreateRow()
+    local btnPilot = CreateButton(row1, "✈ Pilot Mode [OFF]", Color3.fromRGB(40, 40, 60), 0.5)
+    local btnView  = CreateButton(row1, "📷 View Stand [OFF]", Color3.fromRGB(40, 60, 40), 0.5)
+
+    -- Row 2: Textbox
+    local row2 = CreateRow()
     local boxTarget = Instance.new("TextBox")
-    boxTarget.Size = UDim2.new(1, -30, 0, 35)
+    boxTarget.Size = UDim2.new(1, 0, 1, 0)
     boxTarget.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
     boxTarget.PlaceholderText = "Введите ник игрока..."
     boxTarget.Text = ""
     boxTarget.Font = Enum.Font.Gotham
     boxTarget.TextSize = 14
     boxTarget.TextColor3 = Color3.fromRGB(255, 255, 255)
-    boxTarget.Parent = mainFrame
+    boxTarget.Parent = row2
     Instance.new("UICorner", boxTarget).CornerRadius = UDim.new(0, 8)
     local bs = Instance.new("UIStroke")
     bs.Color = Color3.fromRGB(60, 60, 80)
@@ -731,18 +775,49 @@ if game.PlaceId == TARGET_PLACE then
     _G.StickerTargetName = ""
     boxTarget.Changed:Connect(function(prop) if prop == "Text" then _G.StickerTargetName = boxTarget.Text end end)
 
-    local btnSticker = CreateButton("📌 Sticker [OFF]", Color3.fromRGB(40, 40, 60))
-    local btnMethod  = CreateButton("⚙ Method: NORMAL", Color3.fromRGB(60, 40, 60))
-    local btnView    = CreateButton("📷 View Stand [OFF]", Color3.fromRGB(40, 60, 40))
-    
+    -- Row 3: Sticker & Method
+    local row3 = CreateRow()
+    local btnSticker = CreateButton(row3, "📌 Sticker [OFF]", Color3.fromRGB(40, 40, 60), 0.5)
+    local btnMethod  = CreateButton(row3, "⚙ Method: NORMAL", Color3.fromRGB(60, 40, 60), 0.5)
+
+    -- Row 4: Speed & Jump
+    local row4 = CreateRow()
+    local btnSpeed = CreateButton(row4, "⚡ Super Speed [OFF]", Color3.fromRGB(60, 60, 40), 0.5)
+    local btnJump  = CreateButton(row4, "🚀 Super Jump [OFF]", Color3.fromRGB(60, 40, 60), 0.5)
+
     local info = Instance.new("TextLabel")
-    info.Size = UDim2.new(1, -30, 0, 20)
+    info.Size = UDim2.new(1, -20, 0, 20)
     info.BackgroundTransparency = 1
     info.Text = "Caps/Shift: Mouse Lock | F8: Toggle Pilot"
     info.Font = Enum.Font.Gotham
     info.TextSize = 11
     info.TextColor3 = Color3.fromRGB(150, 150, 170)
     info.Parent = mainFrame
+
+    local superSpeedEnabled = false
+    local superJumpEnabled  = false
+
+    btnSpeed.MouseButton1Click:Connect(function()
+        superSpeedEnabled = not superSpeedEnabled
+        if superSpeedEnabled then
+            btnSpeed.Text = "⚡ Super Speed [ON]"
+            btnSpeed.BackgroundColor3 = Color3.fromRGB(120, 120, 80)
+        else
+            btnSpeed.Text = "⚡ Super Speed [OFF]"
+            btnSpeed.BackgroundColor3 = Color3.fromRGB(60, 60, 40)
+        end
+    end)
+
+    btnJump.MouseButton1Click:Connect(function()
+        superJumpEnabled = not superJumpEnabled
+        if superJumpEnabled then
+            btnJump.Text = "🚀 Super Jump [ON]"
+            btnJump.BackgroundColor3 = Color3.fromRGB(120, 80, 120)
+        else
+            btnJump.Text = "🚀 Super Jump [OFF]"
+            btnJump.BackgroundColor3 = Color3.fromRGB(60, 40, 60)
+        end
+    end)
 
     -- // Button Logics //
     btnPilot.MouseButton1Click:Connect(function()

@@ -13,23 +13,6 @@ if not LocalPlayer then return end
 local Camera = Workspace.CurrentCamera
 
 -- ══════════════════════════════════════════
---             ANTICHEAT BYPASS
--- ══════════════════════════════════════════
--- Обходим локальный античит YBA на скорость и прыжок, 
--- чтобы игровые скрипты думали, что у нас обычная скорость (16 и 50).
-pcall(function()
-    local __index
-    __index = hookmetamethod(game, "__index", function(t, k)
-        if not checkcaller() and t:IsA("Humanoid") then
-            if k == "WalkSpeed" then return 16 end
-            if k == "JumpPower" then return 50 end
-            if k == "JumpHeight" then return 7.2 end
-        end
-        return __index(t, k)
-    end)
-end)
-
--- ══════════════════════════════════════════
 --             AUTO-QUEUE SYSTEM
 -- ══════════════════════════════════════════
 local function safe_pcall(f, ...)
@@ -551,33 +534,8 @@ if game.PlaceId == TARGET_PLACE then
         end
     end
 
-    -- // STICKER & MOVEMENT MODE //
-    UserInputService.InputBegan:Connect(function(input, processed)
-        if processed then return end
-        if input.KeyCode == Enum.KeyCode.Space and superJumpEnabled then
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                -- Супер прыжок (через Velocity)
-                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, superJumpVal, hrp.AssemblyLinearVelocity.Z)
-                local hum = char:FindFirstChild("Humanoid")
-                if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
-            end
-        end
-    end)
-
+    -- // STICKER MODE //
     RunService.Heartbeat:Connect(function(dt)
-        if superSpeedEnabled then
-            local char = LocalPlayer.Character
-            local hum = char and char:FindFirstChild("Humanoid")
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if hum and hrp and hum.MoveDirection.Magnitude > 0 then
-                -- Безопасная скорость через CFrame, работает в обход античита
-                local moveDir = hum.MoveDirection
-                hrp.CFrame = hrp.CFrame + (moveDir * (superSpeedVal * dt))
-            end
-        end
-
         scanTimer = scanTimer + dt
         if scanTimer >= CHECK_SCAN_INTERVAL then
             rebuildModelCache()
@@ -684,8 +642,8 @@ if game.PlaceId == TARGET_PLACE then
     sg.Parent = game.CoreGui
 
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 460, 0, 480)
-    mainFrame.Position = UDim2.new(0.5, -230, 0.5, -240)
+    mainFrame.Size = UDim2.new(0, 460, 0, 250)
+    mainFrame.Position = UDim2.new(0.5, -230, 0.5, -125)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     mainFrame.BorderSizePixel = 0
     mainFrame.Active = true
@@ -923,21 +881,6 @@ if game.PlaceId == TARGET_PLACE then
     local btnSticker = CreateButton(row3, "📌 Sticker [OFF]", Color3.fromRGB(40, 40, 60), 0.5)
     local btnMethod  = CreateButton(row3, "⚙ Method: NORMAL", Color3.fromRGB(60, 40, 60), 0.5)
 
-    -- Row 4: Speed & Jump
-    local row4 = CreateRow()
-    local btnSpeed = CreateButton(row4, "⚡ Super Speed [OFF]", Color3.fromRGB(60, 60, 40), 0.5)
-    local btnJump  = CreateButton(row4, "🚀 Super Jump [OFF]", Color3.fromRGB(60, 40, 60), 0.5)
-
-    local superSpeedVal = 80
-    local superJumpVal  = 120
-
-    local sliderSpeed = CreateSlider(mainFrame, "⚡ Speed Power", 20, 300, 80, function(val)
-        superSpeedVal = val
-    end)
-    local sliderJump = CreateSlider(mainFrame, "🚀 Jump Power", 50, 500, 120, function(val)
-        superJumpVal = val
-    end)
-
     local info = Instance.new("TextLabel")
     info.Size = UDim2.new(1, -20, 0, 20)
     info.BackgroundTransparency = 1
@@ -946,31 +889,6 @@ if game.PlaceId == TARGET_PLACE then
     info.TextSize = 11
     info.TextColor3 = Color3.fromRGB(150, 150, 170)
     info.Parent = mainFrame
-
-    local superSpeedEnabled = false
-    local superJumpEnabled  = false
-
-    btnSpeed.MouseButton1Click:Connect(function()
-        superSpeedEnabled = not superSpeedEnabled
-        if superSpeedEnabled then
-            btnSpeed.Text = "⚡ Super Speed [ON]"
-            btnSpeed.BackgroundColor3 = Color3.fromRGB(120, 120, 80)
-        else
-            btnSpeed.Text = "⚡ Super Speed [OFF]"
-            btnSpeed.BackgroundColor3 = Color3.fromRGB(60, 60, 40)
-        end
-    end)
-
-    btnJump.MouseButton1Click:Connect(function()
-        superJumpEnabled = not superJumpEnabled
-        if superJumpEnabled then
-            btnJump.Text = "🚀 Super Jump [ON]"
-            btnJump.BackgroundColor3 = Color3.fromRGB(120, 80, 120)
-        else
-            btnJump.Text = "🚀 Super Jump [OFF]"
-            btnJump.BackgroundColor3 = Color3.fromRGB(60, 40, 60)
-        end
-    end)
 
     -- // Button Logics //
     btnPilot.MouseButton1Click:Connect(function()

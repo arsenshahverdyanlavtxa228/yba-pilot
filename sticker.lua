@@ -356,14 +356,14 @@ if game.PlaceId == TARGET_PLACE then
     local function startStandCamera()
         local stand = getStand()
         if not stand then return end
-        local standHum = stand:FindFirstChildOfClass("Humanoid")
-        if not standHum then return end
+        local standHRP = stand:FindFirstChild("HumanoidRootPart")
+        if not standHRP then return end
         
         prevCamSubject = Camera.CameraSubject
         prevCamType    = Camera.CameraType
 
-        -- Просто переключаем камеру на Humanoid стенда — Roblox сам делает всё остальное
-        Camera.CameraSubject = standHum
+        -- Привязываем камеру к HumanoidRootPart стенда напрямую
+        Camera.CameraSubject = standHRP
         Camera.CameraType    = Enum.CameraType.Custom
         
         viewing = true

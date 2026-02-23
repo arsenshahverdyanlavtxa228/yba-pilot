@@ -55,9 +55,9 @@ local SCRIPT_URL = "https://raw.githubusercontent.com/arsenshahverdyanlavtxa228/
 local main_code = ("loadstring(game:HttpGet('%s'))()"):format(SCRIPT_URL)
 
 -- ══════════════════════════════════════════
---              MAIN LOGIC (YBA)
+--              MAIN LOGIC
 -- ══════════════════════════════════════════
-if game.PlaceId == TARGET_PLACE then
+do
 
     -- // CONSTANTS //
     local ALIGN_FORCE      = 1e7
@@ -821,55 +821,4 @@ if game.PlaceId == TARGET_PLACE then
         if input.KeyCode == Enum.KeyCode.F8 then btnPilot.MouseButton1Click:Fire() end
     end)
 
-else
-    -- ══════════════════════════════════════════
-    --             WRONG GAME GUI
-    -- ══════════════════════════════════════════
-    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-    local sg = Instance.new("ScreenGui")
-    sg.Name = "YBA_OnlyNotice"
-    sg.ResetOnSpawn = false
-    sg.Parent = playerGui
-
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 420, 0, 140)
-    frame.Position = UDim2.new(0.5, -210, 0.5, -70)
-    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    frame.BorderSizePixel = 0
-    frame.Parent = sg
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
-
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -20, 0, 60)
-    title.Position = UDim2.new(0, 10, 0, 10)
-    title.BackgroundTransparency = 1
-    title.Text = "Это не YBA! Нажми Join чтобы телепортироваться."
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 20
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.Parent = frame
-
-    local joinBtn = Instance.new("TextButton")
-    joinBtn.Size = UDim2.new(0, 120, 0, 40)
-    joinBtn.Position = UDim2.new(1, -140, 1, -50)
-    joinBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
-    joinBtn.Text = "Join YBA"
-    joinBtn.Font = Enum.Font.GothamBold
-    joinBtn.TextSize = 16
-    joinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    joinBtn.Parent = frame
-    Instance.new("UICorner", joinBtn).CornerRadius = UDim.new(0, 8)
-
-    local debounce = false
-    joinBtn.MouseButton1Click:Connect(function()
-        if debounce then return end
-        debounce = true
-        title.Text = "Телепортация..."
-        
-        local ok = queue_for_teleport(main_code)
-        if ok then title.Text = "Скрипт в очереди, прыгаем!" else title.Text = "Авто-очередь не сработала. Прыгаем!" end
-        
-        wait(0.5)
-        pcall(function() TeleportService:Teleport(TARGET_PLACE, LocalPlayer) end)
-    end)
 end

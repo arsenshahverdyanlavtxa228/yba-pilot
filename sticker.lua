@@ -353,6 +353,8 @@ if game.PlaceId == TARGET_PLACE then
     end
 
     -- // CAMERA SYSTEM //
+    local camConn = nil
+
     local function startStandCamera()
         local stand = getStand()
         if not stand then return end
@@ -362,15 +364,28 @@ if game.PlaceId == TARGET_PLACE then
         prevCamSubject = Camera.CameraSubject
         prevCamType    = Camera.CameraType
 
-        -- Привязываем камеру к HumanoidRootPart стенда напрямую
         Camera.CameraSubject = standHRP
         Camera.CameraType    = Enum.CameraType.Custom
+
+        -- Roblox сбрасывает CameraSubject каждый кадр, поэтому принудительно держим
+        if camConn then camConn:Disconnect() end
+        camConn = RunService.RenderStepped:Connect(function()
+            if not viewing and not pilotActive then return end
+            local s = getStand()
+            if s then
+                local sHRP = s:FindFirstChild("HumanoidRootPart")
+                if sHRP and Camera.CameraSubject ~= sHRP then
+                    Camera.CameraSubject = sHRP
+                end
+            end
+        end)
         
         viewing = true
     end
 
     local function stopStandCamera()
         viewing = false
+        if camConn then camConn:Disconnect() camConn = nil end
         pcall(function()
             if prevCamSubject then Camera.CameraSubject = prevCamSubject end
             if prevCamType    then Camera.CameraType    = prevCamType    end

@@ -97,20 +97,6 @@ if game.PlaceId == TARGET_PLACE then
     local scanTimer = 0
     local modelCache = {}
 
-    local orbit = {
-        yaw = 0, pitch = math.rad(20),
-        radius = 12, minR = 3, maxR = 60,
-        sens = 0.004, sensMobile = 0.0001,
-        pitchMin = -math.pi/2 + 0.05,
-        pitchMax =  math.pi/2 - 0.05,
-        dragging = false,
-        locked = false,
-        zoomIn = false,
-        zoomOut = false,
-        c1 = nil, c2 = nil, c3 = nil, c4 = nil, c5 = nil, c6 = nil, c7 = nil,
-        renderConn = nil
-    }
-
     local function notify(t, m)
         pcall(function() StarterGui:SetCore("SendNotification", {Title = t, Text = m, Duration = 3}) end)
     end
@@ -367,132 +353,23 @@ if game.PlaceId == TARGET_PLACE then
     end
 
     -- // CAMERA SYSTEM //
-    local function startOrbitCamera(standHRP)
+    local function startStandCamera()
+        local stand = getStand()
+        if not stand then return end
+        local standHum = stand:FindFirstChildOfClass("Humanoid")
+        if not standHum then return end
+        
         prevCamSubject = Camera.CameraSubject
         prevCamType    = Camera.CameraType
 
-        local toStand = Camera.CFrame.Position - standHRP.Position
-        orbit.radius  = math.clamp(toStand.Magnitude, orbit.minR, orbit.maxR)
-        local dir = toStand.Unit
-        orbit.pitch = math.asin(math.clamp(dir.Y, -1, 1))
-        orbit.yaw   = math.atan2(dir.X, dir.Z)
-
-        Camera.CameraType = Enum.CameraType.Scriptable
-
-        orbit.c1 = UserInputService.InputBegan:Connect(function(inp, proc)
-            if proc then return end
-            if inp.UserInputType == Enum.UserInputType.MouseButton2 then
-                orbit.dragging = true
-                UserInputService.MouseIconEnabled = false
-            elseif inp.KeyCode == Enum.KeyCode.CapsLock or inp.KeyCode == Enum.KeyCode.LeftShift then
-                orbit.locked = not orbit.locked
-                if orbit.locked then
-                    UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-                    UserInputService.MouseIconEnabled = false
-                else
-                    UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-                    UserInputService.MouseIconEnabled = true
-                end
-            end
-        end)
-        orbit.c2 = UserInputService.InputEnded:Connect(function(inp)
-            if inp.UserInputType == Enum.UserInputType.MouseButton2 then
-                orbit.dragging = false
-                UserInputService.MouseIconEnabled = true
-            end
-        end)
-        orbit.c3 = UserInputService.InputChanged:Connect(function(inp)
-            if inp.UserInputType == Enum.UserInputType.MouseMovement and orbit.dragging then
-                orbit.yaw   = orbit.yaw   - inp.Delta.X * orbit.sens
-                orbit.pitch = math.clamp(orbit.pitch - inp.Delta.Y * orbit.sens, orbit.pitchMin, orbit.pitchMax)
-            elseif inp.UserInputType == Enum.UserInputType.MouseWheel then
-                -- Отдаление и приближение на ПК (колёсико мыши)
-                orbit.radius = math.clamp(orbit.radius - inp.Position.Z * 5, orbit.minR, orbit.maxR)
-            end
-        end)
-
-        orbit.c4 = UserInputService.TouchPan:Connect(function(touchPositions, totalTranslation, velocity, state, processed)
-            if processed then return end
-            -- Чувствительность берётся из значения слайдера (orbit.sensMobile)
-            orbit.yaw   = orbit.yaw   - velocity.X * orbit.sensMobile
-            orbit.pitch = math.clamp(orbit.pitch - velocity.Y * orbit.sensMobile, orbit.pitchMin, orbit.pitchMax)
-        end)
-
-        local lastPinchScale = 1
-        orbit.c5 = UserInputService.TouchPinch:Connect(function(touchPositions, scale, velocity, state, processed)
-            if processed then return end
-            if state == Enum.UserInputState.Begin then
-                lastPinchScale = scale
-            end
-            local deltaScale = scale - lastPinchScale
-            -- Зум на мобайле (щипок)
-            orbit.radius = math.clamp(orbit.radius - deltaScale * 30, orbit.minR, orbit.maxR)
-            lastPinchScale = scale
-        end)
-
-        -- Нажатие клавиш (работает при любой раскладке)
-        orbit.c6 = UserInputService.InputBegan:Connect(function(inp, proc)
-            if proc then return end
-            -- Приближение (I, W, Скролл вверх)
-            if inp.KeyCode == Enum.KeyCode.I or inp.KeyCode == Enum.KeyCode.Equals or inp.KeyCode == Enum.KeyCode.PageUp then
-                orbit.zoomIn = true
-            -- Отдаление (O, S, Скролл вниз)
-            elseif inp.KeyCode == Enum.KeyCode.O or inp.KeyCode == Enum.KeyCode.Minus or inp.KeyCode == Enum.KeyCode.PageDown then
-                orbit.zoomOut = true
-            end
-        end)
-
-        orbit.c7 = UserInputService.InputEnded:Connect(function(inp, proc)
-            if inp.KeyCode == Enum.KeyCode.I or inp.KeyCode == Enum.KeyCode.Equals or inp.KeyCode == Enum.KeyCode.PageUp then
-                orbit.zoomIn = false
-            elseif inp.KeyCode == Enum.KeyCode.O or inp.KeyCode == Enum.KeyCode.Minus or inp.KeyCode == Enum.KeyCode.PageDown then
-                orbit.zoomOut = false
-            end
-        end)
-
-        orbit.renderConn = RunService.RenderStepped:Connect(function()
-            if not viewing and not pilotActive then return end
-            
-            if orbit.locked then
-                UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-                local delta = UserInputService:GetMouseDelta()
-                orbit.yaw = orbit.yaw - delta.X * orbit.sens
-                orbit.pitch = math.clamp(orbit.pitch - delta.Y * orbit.sens, orbit.pitchMin, orbit.pitchMax)
-            end
-
-            -- Плавный зум кнопками
-            if orbit.zoomIn then
-                orbit.radius = math.clamp(orbit.radius - 0.8, orbit.minR, orbit.maxR)
-            end
-            if orbit.zoomOut then
-                orbit.radius = math.clamp(orbit.radius + 0.8, orbit.minR, orbit.maxR)
-            end
-
-            local s = getStand()
-            if not s then return end
-            local sHRP = s:FindFirstChild("HumanoidRootPart")
-            if not sHRP then return end
-            local rot    = CFrame.Angles(orbit.pitch, orbit.yaw, 0)
-            local offset = rot:VectorToWorldSpace(Vector3.new(0, 0, orbit.radius))
-            Camera.CFrame = CFrame.new(sHRP.Position + offset, sHRP.Position)
-        end)
+        -- Просто переключаем камеру на Humanoid стенда — Roblox сам делает всё остальное
+        Camera.CameraSubject = standHum
+        Camera.CameraType    = Enum.CameraType.Custom
         
         viewing = true
     end
 
-    local function stopOrbitCamera()
-        if orbit.c1 then orbit.c1:Disconnect() orbit.c1 = nil end
-        if orbit.c2 then orbit.c2:Disconnect() orbit.c2 = nil end
-        if orbit.c3 then orbit.c3:Disconnect() orbit.c3 = nil end
-        if orbit.c4 then orbit.c4:Disconnect() orbit.c4 = nil end
-        if orbit.c5 then orbit.c5:Disconnect() orbit.c5 = nil end
-        if orbit.c6 then orbit.c6:Disconnect() orbit.c6 = nil end
-        if orbit.c7 then orbit.c7:Disconnect() orbit.c7 = nil end
-        if orbit.renderConn then orbit.renderConn:Disconnect() orbit.renderConn = nil end
-        orbit.dragging = false
-        orbit.zoomIn = false
-        orbit.zoomOut = false
-        UserInputService.MouseIconEnabled = true
+    local function stopStandCamera()
         viewing = false
         pcall(function()
             if prevCamSubject then Camera.CameraSubject = prevCamSubject end
@@ -540,7 +417,7 @@ if game.PlaceId == TARGET_PLACE then
 
         enableNoclipMode(true)
         pilotActive = true
-        startOrbitCamera(standHRP)
+        startStandCamera()
 
         pilotConn = RunService.Heartbeat:Connect(function()
             if not pilotActive or not pilotAnchor then return end
@@ -580,7 +457,7 @@ if game.PlaceId == TARGET_PLACE then
         cleanupAlignFor(getStand())
         if pilotAnchor then pilotAnchor:Destroy() pilotAnchor = nil end
         if pilotFloor then pilotFloor:Destroy() pilotFloor = nil end
-        if not viewing then stopOrbitCamera() end
+        if not viewing then stopStandCamera() end
         
         local myHRP = getHRP()
         if myHRP then
@@ -600,7 +477,7 @@ if game.PlaceId == TARGET_PLACE then
         if viewing and not pilotActive then
             local s = getStand()
             if not s or not s:FindFirstChild("HumanoidRootPart") then
-                stopOrbitCamera()
+                stopStandCamera()
                 if UI_UpdateViewButton then UI_UpdateViewButton() end
             end
         end
@@ -665,7 +542,7 @@ if game.PlaceId == TARGET_PLACE then
 
     LocalPlayer.CharacterRemoving:Connect(function()
         for entity,_ in pairs(activeAligns) do cleanupAlignFor(entity) end
-        if viewing then stopOrbitCamera() end
+        if viewing then stopStandCamera() end
     end)
     LocalPlayer.CharacterAdded:Connect(function(ch)
         if noclipEnabled and not pilotActive then
@@ -700,8 +577,8 @@ if game.PlaceId == TARGET_PLACE then
     sg.Parent = game.CoreGui
 
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 460, 0, 300)
-    mainFrame.Position = UDim2.new(0.5, -230, 0.5, -150)
+    mainFrame.Size = UDim2.new(0, 460, 0, 230)
+    mainFrame.Position = UDim2.new(0.5, -230, 0.5, -115)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     mainFrame.BorderSizePixel = 0
     mainFrame.Active = true
@@ -852,56 +729,6 @@ if game.PlaceId == TARGET_PLACE then
     local btnSticker = CreateButton(row3, "📌 Sticker [OFF]", Color3.fromRGB(40, 40, 60), 0.5)
     local btnMethod  = CreateButton(row3, "⚙ Method: NORMAL", Color3.fromRGB(60, 40, 60), 0.5)
 
-    local sensFrame = Instance.new("Frame")
-    sensFrame.Size = UDim2.new(1, -20, 0, 45)
-    sensFrame.BackgroundTransparency = 1
-    sensFrame.Parent = mainFrame
-    
-    local sensTitle = Instance.new("TextLabel")
-    sensTitle.Size = UDim2.new(1, 0, 0, 18)
-    sensTitle.BackgroundTransparency = 1
-    sensTitle.Text = "📱 Mobile Sens: 10"
-    sensTitle.Font = Enum.Font.GothamBold
-    sensTitle.TextSize = 13
-    sensTitle.TextColor3 = Color3.fromRGB(220, 220, 255)
-    sensTitle.TextXAlignment = Enum.TextXAlignment.Left
-    sensTitle.Parent = sensFrame
-
-    local sensBtnRow = Instance.new("Frame")
-    sensBtnRow.Size = UDim2.new(1, 0, 0, 27)
-    sensBtnRow.Position = UDim2.new(0, 0, 0, 18)
-    sensBtnRow.BackgroundTransparency = 1
-    sensBtnRow.Parent = sensFrame
-    local l2 = Instance.new("UIListLayout")
-    l2.FillDirection = Enum.FillDirection.Horizontal
-    l2.SortOrder = Enum.SortOrder.LayoutOrder
-    l2.Padding = UDim.new(0, 4)
-    l2.Parent = sensBtnRow
-
-    local sensBtns = {}
-    for i = 1, 10 do
-        local val = i * 10
-        local b = Instance.new("TextButton")
-        b.Size = UDim2.new(0.1, -3.6, 1, 0)
-        b.BackgroundColor3 = val == 10 and Color3.fromRGB(80, 120, 200) or Color3.fromRGB(40, 40, 50)
-        b.Text = tostring(val)
-        b.Font = Enum.Font.GothamBold
-        b.TextSize = 11
-        b.TextColor3 = Color3.fromRGB(255, 255, 255)
-        b.Parent = sensBtnRow
-        Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
-        
-        b.MouseButton1Click:Connect(function()
-            orbit.sensMobile = val / 100000
-            sensTitle.Text = "📱 Mobile Sens: " .. val
-            for _, otherBtn in ipairs(sensBtns) do
-                otherBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-            end
-            b.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
-        end)
-        table.insert(sensBtns, b)
-    end
-
     local info = Instance.new("TextLabel")
     info.Size = UDim2.new(1, -20, 0, 20)
     info.BackgroundTransparency = 1
@@ -970,13 +797,13 @@ if game.PlaceId == TARGET_PLACE then
     btnView.MouseButton1Click:Connect(function()
         if pilotActive then notify("YBA", "Камера уже управляется Пилотом!") return end
         if viewing then
-            stopOrbitCamera()
+            stopStandCamera()
             btnView.Text = "📷 View Stand [OFF]"
             btnView.BackgroundColor3 = Color3.fromRGB(40, 60, 40)
         else
             local stand = getStand()
             if not stand then notify("Ошибка", "Стенд не найден!") return end
-            startOrbitCamera(stand:FindFirstChild("HumanoidRootPart"))
+            startStandCamera()
             btnView.Text = "📷 View Stand [ON]"
             btnView.BackgroundColor3 = Color3.fromRGB(80, 140, 80)
         end

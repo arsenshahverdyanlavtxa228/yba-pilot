@@ -353,23 +353,18 @@ if game.PlaceId == TARGET_PLACE then
     end
 
     -- // CAMERA SYSTEM //
-    local camConn = nil
+    local CAM_BIND_NAME = "PilotCameraOffset"
 
     local function startStandCamera()
         local stand = getStand()
         if not stand then return end
         local standHRP = stand:FindFirstChild("HumanoidRootPart")
         if not standHRP then return end
-        
-        prevCamSubject = Camera.CameraSubject
-        prevCamType    = Camera.CameraType
 
-        -- Не трогаем CameraSubject/CameraType вообще!
-        -- Roblox сам вращает камеру вокруг персонажа как обычно.
-        -- Мы просто каждый кадр СДВИГАЕМ готовый результат камеры
-        -- с позиции персонажа на позицию стенда.
-        if camConn then camConn:Disconnect() end
-        camConn = RunService.RenderStepped:Connect(function()
+        -- Привязываемся ПОСЛЕ стандартной камеры Roblox (приоритет 201, камера = 200)
+        -- Roblox сначала считает камеру вокруг персонажа, потом мы сдвигаем результат на стенд
+        pcall(function() RunService:UnbindFromRenderStep(CAM_BIND_NAME) end)
+        RunService:BindToRenderStep(CAM_BIND_NAME, Enum.RenderPriority.Camera.Value + 1, function()
             if not viewing and not pilotActive then return end
             local s = getStand()
             if not s then return end
@@ -386,7 +381,7 @@ if game.PlaceId == TARGET_PLACE then
 
     local function stopStandCamera()
         viewing = false
-        if camConn then camConn:Disconnect() camConn = nil end
+        pcall(function() RunService:UnbindFromRenderStep(CAM_BIND_NAME) end)
     end
 
     -- // PILOT MODE //

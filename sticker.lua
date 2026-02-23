@@ -354,7 +354,6 @@ if game.PlaceId == TARGET_PLACE then
 
     -- // CAMERA SYSTEM //
     local camConn = nil
-    local camDummy = nil
 
     local function startStandCamera()
         local stand = getStand()
@@ -365,41 +364,20 @@ if game.PlaceId == TARGET_PLACE then
         prevCamSubject = Camera.CameraSubject
         prevCamType    = Camera.CameraType
 
-        -- Создаём невидимый "фейковый персонаж" в Workspace (не внутри нашего Character!)
-        -- Roblox сбрасывает CameraSubject если он внутри нашего персонажа,
-        -- но если Humanoid лежит в отдельной модели в Workspace — всё работает
-        camDummy = Instance.new("Model")
-        camDummy.Name = "CamDummy"
-        
-        local dummyHRP = Instance.new("Part")
-        dummyHRP.Name = "HumanoidRootPart"
-        dummyHRP.Size = Vector3.new(1, 1, 1)
-        dummyHRP.Transparency = 1
-        dummyHRP.CanCollide = false
-        dummyHRP.Anchored = true
-        dummyHRP.CFrame = standHRP.CFrame
-        dummyHRP.Parent = camDummy
-
-        local dummyHum = Instance.new("Humanoid")
-        dummyHum.Parent = camDummy
-
-        camDummy.PrimaryPart = dummyHRP
-        camDummy.Parent = Workspace
-
-        Camera.CameraSubject = dummyHum
-        Camera.CameraType    = Enum.CameraType.Custom
-
-        -- Каждый кадр телепортируем фейковый персонаж к стенду
+        -- Не трогаем CameraSubject/CameraType вообще!
+        -- Roblox сам вращает камеру вокруг персонажа как обычно.
+        -- Мы просто каждый кадр СДВИГАЕМ готовый результат камеры
+        -- с позиции персонажа на позицию стенда.
         if camConn then camConn:Disconnect() end
         camConn = RunService.RenderStepped:Connect(function()
             if not viewing and not pilotActive then return end
             local s = getStand()
-            if s then
-                local sHRP = s:FindFirstChild("HumanoidRootPart")
-                if sHRP and camDummy then
-                    local d = camDummy:FindFirstChild("HumanoidRootPart")
-                    if d then d.CFrame = sHRP.CFrame end
-                end
+            if not s then return end
+            local sHRP = s:FindFirstChild("HumanoidRootPart")
+            local myHRP = getHRP()
+            if sHRP and myHRP then
+                local offset = sHRP.Position - myHRP.Position
+                Camera.CFrame = Camera.CFrame + offset
             end
         end)
         
@@ -409,11 +387,6 @@ if game.PlaceId == TARGET_PLACE then
     local function stopStandCamera()
         viewing = false
         if camConn then camConn:Disconnect() camConn = nil end
-        if camDummy then camDummy:Destroy() camDummy = nil end
-        pcall(function()
-            if prevCamSubject then Camera.CameraSubject = prevCamSubject end
-            if prevCamType    then Camera.CameraType    = prevCamType    end
-        end)
     end
 
     -- // PILOT MODE //

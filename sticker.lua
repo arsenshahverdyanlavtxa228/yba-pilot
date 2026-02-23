@@ -1,58 +1,14 @@
--- YBA Pilot + Sticker Unified
-local TARGET_PLACE = 2809202155
+-- Pilot + Sticker Unified
 local Players = game:GetService("Players")
-local TeleportService = game:GetService("TeleportService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
-    local LocalPlayer = Players.LocalPlayer or Players:WaitForChild("LocalPlayer", 5)
+local LocalPlayer = Players.LocalPlayer or Players:WaitForChild("LocalPlayer", 5)
 if not LocalPlayer then return end
 local Camera = Workspace.CurrentCamera
-
--- ══════════════════════════════════════════
---             AUTO-QUEUE SYSTEM
--- ══════════════════════════════════════════
-local function safe_pcall(f, ...)
-    local ok, res = pcall(f, ...)
-    return ok, res
-end
-
-local function queue_for_teleport(code)
-    if syn and type(syn.queue_on_teleport) == "function" then
-        safe_pcall(syn.queue_on_teleport, code) return true
-    end
-    if type(queue_on_teleport) == "function" then
-        safe_pcall(queue_on_teleport, code) return true
-    end
-    if type(queueonteleport) == "function" then
-        safe_pcall(queueonteleport, code) return true
-    end
-    local possible_tables = {getgenv and getgenv() or nil, _G}
-    for _, tbl in ipairs(possible_tables) do
-        if type(tbl) == "table" then
-            if type(tbl.queue_on_teleport) == "function" then
-                safe_pcall(tbl.queue_on_teleport, code) return true
-            end
-            if type(tbl.queueonteleport) == "function" then
-                safe_pcall(tbl.queueonteleport, code) return true
-            end
-        end
-    end
-    if type(getfenv) == "function" then
-        local ok, env = pcall(function() return getfenv() end)
-        if ok and type(env) == "table" and type(env.queue_on_teleport) == "function" then
-            safe_pcall(env.queue_on_teleport, code) return true
-        end
-    end
-    return false
-end
-
--- // GITHUB RAW SCRIPT URL
-local SCRIPT_URL = "https://raw.githubusercontent.com/arsenshahverdyanlavtxa228/yba-pilot/refs/heads/main/sticker.lua"
-local main_code = ("loadstring(game:HttpGet('%s'))()"):format(SCRIPT_URL)
 
 -- ══════════════════════════════════════════
 --              MAIN LOGIC

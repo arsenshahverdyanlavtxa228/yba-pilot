@@ -365,19 +365,8 @@ do
         pilotFloor.CFrame = CFrame.new(px, gY - 25, pz)
         pilotFloor.Parent = Workspace
 
-        pilotAnchor = Instance.new("Part")
-        pilotAnchor.Name = "PilotAnchor"
-        pilotAnchor.Anchored = true
-        pilotAnchor.CanCollide = false
-        pilotAnchor.Transparency = 1
-        pilotAnchor.Size = Vector3.new(1, 1, 1)
-        pilotAnchor.CFrame = CFrame.new(groundPos)
-        pilotAnchor.Parent = Workspace
-
         pcall(function() standHRP.CFrame = CFrame.new(groundPos) end)
         pcall(function() hrp.CFrame = CFrame.new(px, gY - 20, pz) end)
-
-        attachAlign(standHRP, pilotAnchor, 0)
 
         enableNoclipMode(true)
         pilotActive = true
@@ -386,22 +375,25 @@ do
         local lastGoodGY = gY
 
         pilotConn = RunService.Heartbeat:Connect(function()
-            if not pilotActive or not pilotAnchor then return end
+            if not pilotActive then return end
 
             local myHRP = getHRP()
             if not myHRP then return end
+            local s = getStand()
+            if not s then return end
+            local sHRP = s:FindFirstChild("HumanoidRootPart")
+            if not sHRP then return end
 
             local mx, mz = myHRP.Position.X, myHRP.Position.Z
 
-            -- Луч от текущей высоты стенда +8 вниз (не с неба!)
-            -- +8 позволяет подниматься по лестницам (до 8 юнитов за шаг)
-            -- Не видит крыши зданий которые намного выше
+            -- Луч от текущей высоты стенда +8 вниз
+            -- Видит лестницы (до +8), но НЕ видит крыши зданий выше
             local params = RaycastParams.new()
-            params.FilterDescendantsInstances = {LocalPlayer.Character, stand, pilotFloor, pilotAnchor}
+            params.FilterDescendantsInstances = {LocalPlayer.Character, s, pilotFloor}
             params.FilterType = Enum.RaycastFilterType.Exclude
-            local currentAnchorY = pilotAnchor.Position.Y
+            local currentStandY = sHRP.Position.Y
             local res = Workspace:Raycast(
-                Vector3.new(mx, currentAnchorY + 8, mz),
+                Vector3.new(mx, currentStandY + 8, mz),
                 Vector3.new(0, -200, 0),
                 params
             )
@@ -420,7 +412,10 @@ do
                 if jumpOffset < 0.5 then jumpOffset = 0 end
             end
 
-            pilotAnchor.CFrame = CFrame.new(mx, newGY + ANCHOR_HEIGHT + jumpOffset + pilotFlyOffset, mz)
+            local targetY = newGY + ANCHOR_HEIGHT + jumpOffset + pilotFlyOffset
+
+            -- Напрямую ставим CFrame стенда — никакой физики, никаких столкновений!
+            sHRP.CFrame = CFrame.new(mx, targetY, mz) * CFrame.Angles(0, sHRP.CFrame:ToEulerAnglesYXZ())
             
             if pilotFloor then
                 local targetFloorY = newGY - 25
@@ -441,8 +436,6 @@ do
         pilotFlyOffset = 0
         disableNoclipMode(true)
         if pilotConn then pilotConn:Disconnect() pilotConn = nil end
-        cleanupAlignFor(getStand())
-        if pilotAnchor then pilotAnchor:Destroy() pilotAnchor = nil end
         if pilotFloor then pilotFloor:Destroy() pilotFloor = nil end
         if not viewing then stopStandCamera() end
         

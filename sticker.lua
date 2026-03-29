@@ -383,14 +383,36 @@ do
         pilotActive = true
         startStandCamera()
 
+        local lastGoodGY = gY
+
         pilotConn = RunService.Heartbeat:Connect(function()
             if not pilotActive or not pilotAnchor then return end
 
             local myHRP = getHRP()
             if not myHRP then return end
 
-            local mx, mz  = myHRP.Position.X, myHRP.Position.Z
-            local newGY   = getGroundY(mx, mz, {LocalPlayer.Character, stand, pilotFloor})
+            local mx, mz = myHRP.Position.X, myHRP.Position.Z
+
+            -- Луч от текущей высоты стенда +8 вниз (не с неба!)
+            -- +8 позволяет подниматься по лестницам (до 8 юнитов за шаг)
+            -- Не видит крыши зданий которые намного выше
+            local params = RaycastParams.new()
+            params.FilterDescendantsInstances = {LocalPlayer.Character, stand, pilotFloor, pilotAnchor}
+            params.FilterType = Enum.RaycastFilterType.Exclude
+            local currentAnchorY = pilotAnchor.Position.Y
+            local res = Workspace:Raycast(
+                Vector3.new(mx, currentAnchorY + 8, mz),
+                Vector3.new(0, -200, 0),
+                params
+            )
+            
+            local newGY
+            if res then
+                newGY = res.Position.Y
+                lastGoodGY = newGY
+            else
+                newGY = lastGoodGY
+            end
 
             local jumpOffset = 0
             if pilotFloor then

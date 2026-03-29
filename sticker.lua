@@ -32,6 +32,9 @@ do
     local pilotConn = nil
     local pilotAnchor = nil
     local pilotFloor = nil
+    local pilotFlyOffset = 0
+    local pilotKeyE = false
+    local pilotKeyQ = false
 
     local stickerEnabled = false
     local stickerMethod = "normal"
@@ -387,18 +390,33 @@ do
         pilotActive = true
         startStandCamera()
 
+        -- E/Q для подъёма/спуска стенда
+        local flyInputConn1 = UserInputService.InputBegan:Connect(function(inp, proc)
+            if proc then return end
+            if inp.KeyCode == Enum.KeyCode.E then pilotKeyE = true end
+            if inp.KeyCode == Enum.KeyCode.Q then pilotKeyQ = true end
+        end)
+        local flyInputConn2 = UserInputService.InputEnded:Connect(function(inp)
+            if inp.KeyCode == Enum.KeyCode.E then pilotKeyE = false end
+            if inp.KeyCode == Enum.KeyCode.Q then pilotKeyQ = false end
+        end)
+
         pilotConn = RunService.Heartbeat:Connect(function()
             if not pilotActive or not pilotAnchor then return end
 
             local myHRP = getHRP()
             if not myHRP then return end
 
+            -- E = вверх, Q = вниз
+            if pilotKeyE then pilotFlyOffset = pilotFlyOffset + 1.5 end
+            if pilotKeyQ then pilotFlyOffset = pilotFlyOffset - 1.5 end
+
             local mx, mz  = myHRP.Position.X, myHRP.Position.Z
             local newGY   = getGroundY(mx, mz, {LocalPlayer.Character, stand, pilotFloor}, pilotAnchor.Position.Y)
 
-            -- Если земля резко подскочила вверх (крыша здания) — игнорируем
-            local currentGY = pilotAnchor.Position.Y - ANCHOR_HEIGHT
-            if newGY > currentGY + 3 then
+            -- Если земля резко подскочила (крыша) — игнорируем, только плавные подъёмы (лестницы)
+            local currentGY = pilotAnchor.Position.Y - ANCHOR_HEIGHT - pilotFlyOffset
+            if newGY > currentGY + 8 then
                 newGY = currentGY
             end
 
@@ -408,7 +426,7 @@ do
                 if jumpOffset < 0.5 then jumpOffset = 0 end
             end
 
-            pilotAnchor.CFrame = CFrame.new(mx, newGY + ANCHOR_HEIGHT + jumpOffset, mz)
+            pilotAnchor.CFrame = CFrame.new(mx, newGY + ANCHOR_HEIGHT + jumpOffset + pilotFlyOffset, mz)
             
             if pilotFloor then
                 local targetFloorY = newGY - 25
@@ -426,6 +444,9 @@ do
 
     local function stopPilot()
         pilotActive = false
+        pilotFlyOffset = 0
+        pilotKeyE = false
+        pilotKeyQ = false
         disableNoclipMode(true)
         if pilotConn then pilotConn:Disconnect() pilotConn = nil end
         cleanupAlignFor(getStand())

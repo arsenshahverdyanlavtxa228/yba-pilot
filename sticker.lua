@@ -396,6 +396,12 @@ do
             local mx, mz  = myHRP.Position.X, myHRP.Position.Z
             local newGY   = getGroundY(mx, mz, {LocalPlayer.Character, stand, pilotFloor}, pilotAnchor.Position.Y)
 
+            -- Если земля резко подскочила вверх (крыша здания) — игнорируем
+            local currentGY = pilotAnchor.Position.Y - ANCHOR_HEIGHT
+            if newGY > currentGY + 3 then
+                newGY = currentGY
+            end
+
             local jumpOffset = 0
             if pilotFloor then
                 jumpOffset = myHRP.Position.Y - (pilotFloor.Position.Y + 5)

@@ -389,25 +389,7 @@ do
             if not myHRP then return end
 
             local mx, mz  = myHRP.Position.X, myHRP.Position.Z
-            
-            -- Вместо луча сверху (который попадает в крыши зданий),
-            -- пускаем луч от текущей высоты якоря + 5 юнитов вниз.
-            -- Стенд плавно следует рельефу, а не прыгает на крыши.
-            local anchorY = pilotAnchor.Position.Y
-            local params = RaycastParams.new()
-            params.FilterDescendantsInstances = {LocalPlayer.Character, stand, pilotFloor}
-            params.FilterType = Enum.RaycastFilterType.Exclude
-            local rayResult = Workspace:Raycast(
-                Vector3.new(mx, anchorY + 5, mz),
-                Vector3.new(0, -50, 0),
-                params
-            )
-            local newGY
-            if rayResult then
-                newGY = rayResult.Position.Y
-            else
-                newGY = anchorY - ANCHOR_HEIGHT
-            end
+            local newGY   = getGroundY(mx, mz, {LocalPlayer.Character, stand, pilotFloor})
 
             local jumpOffset = 0
             if pilotFloor then

@@ -73,16 +73,21 @@ do
         return nil
     end
 
-    local function getGroundY(x, z, excludes)
+    local function getGroundY(x, z, excludes, refY)
         local params = RaycastParams.new()
         params.FilterDescendantsInstances = excludes or {}
         params.FilterType = Enum.RaycastFilterType.Exclude
         
         local startY = 800
-        local hrp = getHRP()
-        if hrp then
-            local currentY = hrp.Position.Y
-            if currentY > -50 then startY = currentY + 100 else startY = 200 end
+        if refY then
+            -- В пилоте: луч от высоты стенда +10, чтобы не попадать в крыши зданий
+            startY = refY + 10
+        else
+            local hrp = getHRP()
+            if hrp then
+                local currentY = hrp.Position.Y
+                if currentY > -50 then startY = currentY + 100 else startY = 200 end
+            end
         end
 
         local res = Workspace:Raycast(Vector3.new(x, startY, z), Vector3.new(0, -1000, 0), params)
@@ -93,7 +98,7 @@ do
             end
             return res.Position.Y
         end
-        return hrp and hrp.Position.Y or 0
+        return refY or (getHRP() and getHRP().Position.Y or 0)
     end
 
     -- // CACHE SYSTEM (Sticker) //
@@ -389,7 +394,7 @@ do
             if not myHRP then return end
 
             local mx, mz  = myHRP.Position.X, myHRP.Position.Z
-            local newGY   = getGroundY(mx, mz, {LocalPlayer.Character, stand, pilotFloor})
+            local newGY   = getGroundY(mx, mz, {LocalPlayer.Character, stand, pilotFloor}, pilotAnchor.Position.Y)
 
             local jumpOffset = 0
             if pilotFloor then

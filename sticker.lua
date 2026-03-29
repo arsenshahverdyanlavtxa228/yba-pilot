@@ -32,7 +32,6 @@ do
     local pilotConn = nil
     local pilotAnchor = nil
     local pilotFloor = nil
-    local pilotFlyOffset = 0
 
     local stickerEnabled = false
     local stickerMethod = "normal"
@@ -74,16 +73,21 @@ do
         return nil
     end
 
-    local function getGroundY(x, z, excludes)
+    local function getGroundY(x, z, excludes, refY)
         local params = RaycastParams.new()
         params.FilterDescendantsInstances = excludes or {}
         params.FilterType = Enum.RaycastFilterType.Exclude
         
         local startY = 800
-        local hrp = getHRP()
-        if hrp then
-            local currentY = hrp.Position.Y
-            if currentY > -50 then startY = currentY + 100 else startY = 200 end
+        if refY then
+            -- В пилоте: луч от высоты стенда +10, чтобы не попадать в крыши зданий
+            startY = refY + 10
+        else
+            local hrp = getHRP()
+            if hrp then
+                local currentY = hrp.Position.Y
+                if currentY > -50 then startY = currentY + 100 else startY = 200 end
+            end
         end
 
         local res = Workspace:Raycast(Vector3.new(x, startY, z), Vector3.new(0, -1000, 0), params)
@@ -94,7 +98,7 @@ do
             end
             return res.Position.Y
         end
-        return hrp and hrp.Position.Y or 0
+        return refY or (getHRP() and getHRP().Position.Y or 0)
     end
 
     -- // CACHE SYSTEM (Sticker) //
@@ -365,45 +369,37 @@ do
         pilotFloor.CFrame = CFrame.new(px, gY - 25, pz)
         pilotFloor.Parent = Workspace
 
+        pilotAnchor = Instance.new("Part")
+        pilotAnchor.Name = "PilotAnchor"
+        pilotAnchor.Anchored = true
+        pilotAnchor.CanCollide = false
+        pilotAnchor.Transparency = 1
+        pilotAnchor.Size = Vector3.new(1, 1, 1)
+        pilotAnchor.CFrame = CFrame.new(groundPos)
+        pilotAnchor.Parent = Workspace
+
         pcall(function() standHRP.CFrame = CFrame.new(groundPos) end)
         pcall(function() hrp.CFrame = CFrame.new(px, gY - 20, pz) end)
+
+        attachAlign(standHRP, pilotAnchor, 0)
 
         enableNoclipMode(true)
         pilotActive = true
         startStandCamera()
 
-        local lastGoodGY = gY
-
         pilotConn = RunService.Heartbeat:Connect(function()
-            if not pilotActive then return end
+            if not pilotActive or not pilotAnchor then return end
 
             local myHRP = getHRP()
             if not myHRP then return end
-            local s = getStand()
-            if not s then return end
-            local sHRP = s:FindFirstChild("HumanoidRootPart")
-            if not sHRP then return end
 
-            local mx, mz = myHRP.Position.X, myHRP.Position.Z
+            local mx, mz  = myHRP.Position.X, myHRP.Position.Z
+            local newGY   = getGroundY(mx, mz, {LocalPlayer.Character, stand, pilotFloor}, pilotAnchor.Position.Y)
 
-            -- Луч от текущей высоты стенда +8 вниз
-            -- Видит лестницы (до +8), но НЕ видит крыши зданий выше
-            local params = RaycastParams.new()
-            params.FilterDescendantsInstances = {LocalPlayer.Character, s, pilotFloor}
-            params.FilterType = Enum.RaycastFilterType.Exclude
-            local currentStandY = sHRP.Position.Y
-            local res = Workspace:Raycast(
-                Vector3.new(mx, currentStandY + 8, mz),
-                Vector3.new(0, -200, 0),
-                params
-            )
-            
-            local newGY
-            if res then
-                newGY = res.Position.Y
-                lastGoodGY = newGY
-            else
-                newGY = lastGoodGY
+            -- Если земля резко подскочила вверх (крыша здания) — игнорируем
+            local currentGY = pilotAnchor.Position.Y - ANCHOR_HEIGHT
+            if newGY > currentGY + 3 then
+                newGY = currentGY
             end
 
             local jumpOffset = 0
@@ -412,10 +408,7 @@ do
                 if jumpOffset < 0.5 then jumpOffset = 0 end
             end
 
-            local targetY = newGY + ANCHOR_HEIGHT + jumpOffset + pilotFlyOffset
-
-            -- Напрямую ставим CFrame стенда — никакой физики, никаких столкновений!
-            sHRP.CFrame = CFrame.new(mx, targetY, mz) * CFrame.Angles(0, sHRP.CFrame:ToEulerAnglesYXZ())
+            pilotAnchor.CFrame = CFrame.new(mx, newGY + ANCHOR_HEIGHT + jumpOffset, mz)
             
             if pilotFloor then
                 local targetFloorY = newGY - 25
@@ -433,9 +426,10 @@ do
 
     local function stopPilot()
         pilotActive = false
-        pilotFlyOffset = 0
         disableNoclipMode(true)
         if pilotConn then pilotConn:Disconnect() pilotConn = nil end
+        cleanupAlignFor(getStand())
+        if pilotAnchor then pilotAnchor:Destroy() pilotAnchor = nil end
         if pilotFloor then pilotFloor:Destroy() pilotFloor = nil end
         if not viewing then stopStandCamera() end
         
@@ -557,7 +551,7 @@ do
     sg.Parent = game.CoreGui
 
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 460, 0, 275)
+    mainFrame.Size = UDim2.new(0, 460, 0, 270)
     mainFrame.Position = UDim2.new(0.5, -230, 0.5, -115)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     mainFrame.BorderSizePixel = 0
@@ -709,20 +703,16 @@ do
     local btnSticker = CreateButton(row3, "📌 Sticker [OFF]", Color3.fromRGB(40, 40, 60), 0.5)
     local btnMethod  = CreateButton(row3, "⚙ Method: NORMAL", Color3.fromRGB(60, 40, 60), 0.5)
 
-    -- Row 4: Height Up / Reset / Down
+    -- Row 4: Stand Up / Down
     local row4 = CreateRow()
-    local btnUp    = CreateButton(row4, "⬆ Выше", Color3.fromRGB(40, 60, 40), 0.33)
-    local btnReset = CreateButton(row4, "🔄 Сброс", Color3.fromRGB(60, 60, 40), 0.33)
-    local btnDown  = CreateButton(row4, "⬇ Ниже", Color3.fromRGB(60, 40, 40), 0.33)
+    local btnUp   = CreateButton(row4, "⬆ Stand Up", Color3.fromRGB(40, 60, 40), 0.5)
+    local btnDown = CreateButton(row4, "⬇ Stand Down", Color3.fromRGB(60, 40, 40), 0.5)
 
     btnUp.MouseButton1Click:Connect(function()
-        pilotFlyOffset = pilotFlyOffset + 5
+        ANCHOR_HEIGHT = ANCHOR_HEIGHT + 2
     end)
     btnDown.MouseButton1Click:Connect(function()
-        pilotFlyOffset = pilotFlyOffset - 5
-    end)
-    btnReset.MouseButton1Click:Connect(function()
-        pilotFlyOffset = 0
+        ANCHOR_HEIGHT = ANCHOR_HEIGHT - 2
     end)
 
     local info = Instance.new("TextLabel")

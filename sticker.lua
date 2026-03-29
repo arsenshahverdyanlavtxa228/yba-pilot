@@ -33,8 +33,6 @@ do
     local pilotAnchor = nil
     local pilotFloor = nil
     local pilotFlyOffset = 0
-    local pilotKeyE = false
-    local pilotKeyQ = false
 
     local stickerEnabled = false
     local stickerMethod = "normal"
@@ -76,21 +74,16 @@ do
         return nil
     end
 
-    local function getGroundY(x, z, excludes, refY)
+    local function getGroundY(x, z, excludes)
         local params = RaycastParams.new()
         params.FilterDescendantsInstances = excludes or {}
         params.FilterType = Enum.RaycastFilterType.Exclude
         
         local startY = 800
-        if refY then
-            -- В пилоте: луч от высоты стенда +10, чтобы не попадать в крыши зданий
-            startY = refY + 10
-        else
-            local hrp = getHRP()
-            if hrp then
-                local currentY = hrp.Position.Y
-                if currentY > -50 then startY = currentY + 100 else startY = 200 end
-            end
+        local hrp = getHRP()
+        if hrp then
+            local currentY = hrp.Position.Y
+            if currentY > -50 then startY = currentY + 100 else startY = 200 end
         end
 
         local res = Workspace:Raycast(Vector3.new(x, startY, z), Vector3.new(0, -1000, 0), params)
@@ -101,7 +94,7 @@ do
             end
             return res.Position.Y
         end
-        return refY or (getHRP() and getHRP().Position.Y or 0)
+        return hrp and hrp.Position.Y or 0
     end
 
     -- // CACHE SYSTEM (Sticker) //
@@ -390,35 +383,14 @@ do
         pilotActive = true
         startStandCamera()
 
-        -- E/Q для подъёма/спуска стенда
-        local flyInputConn1 = UserInputService.InputBegan:Connect(function(inp, proc)
-            if proc then return end
-            if inp.KeyCode == Enum.KeyCode.E then pilotKeyE = true end
-            if inp.KeyCode == Enum.KeyCode.Q then pilotKeyQ = true end
-        end)
-        local flyInputConn2 = UserInputService.InputEnded:Connect(function(inp)
-            if inp.KeyCode == Enum.KeyCode.E then pilotKeyE = false end
-            if inp.KeyCode == Enum.KeyCode.Q then pilotKeyQ = false end
-        end)
-
         pilotConn = RunService.Heartbeat:Connect(function()
             if not pilotActive or not pilotAnchor then return end
 
             local myHRP = getHRP()
             if not myHRP then return end
 
-            -- E = вверх, Q = вниз
-            if pilotKeyE then pilotFlyOffset = pilotFlyOffset + 1.5 end
-            if pilotKeyQ then pilotFlyOffset = pilotFlyOffset - 1.5 end
-
             local mx, mz  = myHRP.Position.X, myHRP.Position.Z
-            local newGY   = getGroundY(mx, mz, {LocalPlayer.Character, stand, pilotFloor}, pilotAnchor.Position.Y)
-
-            -- Если земля резко подскочила (крыша) — игнорируем, только плавные подъёмы (лестницы)
-            local currentGY = pilotAnchor.Position.Y - ANCHOR_HEIGHT - pilotFlyOffset
-            if newGY > currentGY + 8 then
-                newGY = currentGY
-            end
+            local newGY   = getGroundY(mx, mz, {LocalPlayer.Character, stand, pilotFloor})
 
             local jumpOffset = 0
             if pilotFloor then
@@ -445,8 +417,6 @@ do
     local function stopPilot()
         pilotActive = false
         pilotFlyOffset = 0
-        pilotKeyE = false
-        pilotKeyQ = false
         disableNoclipMode(true)
         if pilotConn then pilotConn:Disconnect() pilotConn = nil end
         cleanupAlignFor(getStand())
@@ -572,7 +542,7 @@ do
     sg.Parent = game.CoreGui
 
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 460, 0, 230)
+    mainFrame.Size = UDim2.new(0, 460, 0, 275)
     mainFrame.Position = UDim2.new(0.5, -230, 0.5, -115)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     mainFrame.BorderSizePixel = 0
@@ -723,6 +693,22 @@ do
     local row3 = CreateRow()
     local btnSticker = CreateButton(row3, "📌 Sticker [OFF]", Color3.fromRGB(40, 40, 60), 0.5)
     local btnMethod  = CreateButton(row3, "⚙ Method: NORMAL", Color3.fromRGB(60, 40, 60), 0.5)
+
+    -- Row 4: Height Up / Reset / Down
+    local row4 = CreateRow()
+    local btnUp    = CreateButton(row4, "⬆ Выше", Color3.fromRGB(40, 60, 40), 0.33)
+    local btnReset = CreateButton(row4, "🔄 Сброс", Color3.fromRGB(60, 60, 40), 0.33)
+    local btnDown  = CreateButton(row4, "⬇ Ниже", Color3.fromRGB(60, 40, 40), 0.33)
+
+    btnUp.MouseButton1Click:Connect(function()
+        pilotFlyOffset = pilotFlyOffset + 5
+    end)
+    btnDown.MouseButton1Click:Connect(function()
+        pilotFlyOffset = pilotFlyOffset - 5
+    end)
+    btnReset.MouseButton1Click:Connect(function()
+        pilotFlyOffset = 0
+    end)
 
     local info = Instance.new("TextLabel")
     info.Size = UDim2.new(1, -20, 0, 20)
